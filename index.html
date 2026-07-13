@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Privado - Royale</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #212121;
+            --bg-sidebar: #171717;
+            --bg-chat: #212121;
+            --bg-msg-user: #2f2f2f;
+            --bg-msg-other: #212121;
+            --text-main: #ececec;
+            --text-muted: #b4b4b4;
+            --border-color: #424242;
+            --input-bg: #2f2f2f;
+            --accent-color: #10a37f;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* Pantalla de Login */
+        #login-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: var(--bg-sidebar);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: all 0.5s ease;
+        }
+
+        .login-box {
+            background: var(--bg-main);
+            padding: 2.5rem;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        .login-box h2 { margin-bottom: 1.5rem; font-size: 1.8rem; }
+        
+        select, input, button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-main);
+            font-size: 1rem;
+            outline: none;
+        }
+
+        select:focus, input:focus { border-color: var(--accent-color); }
+
+        button {
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+
+        button:hover { background: #1a7f64; }
+        .btn-danger { background: #c0392b; }
+        .btn-danger:hover { background: #a93226; }
+
+        .error-msg { color: #e74c3c; margin-bottom: 1rem; display: none; font-size: 0.9rem; }
+
+        /* Contenedor Principal (Layout LLM) */
+        #app-container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Sidebar */
+        aside {
+            width: 260px;
+            background-color: var(--bg-sidebar);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 1rem;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .sidebar-top h3 {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 1rem;
+        }
+
+        .chat-list-item {
+            background: var(--bg-msg-user);
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.95rem;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Área de Chat */
+        main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--bg-chat);
+            position: relative;
+        }
+
+        header {
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #chat-window {
+            flex: 1;
+            overflow-y: auto;
+            padding: 2rem 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Estilo de Mensajes tipo LLM */
+        .message-row {
+            width: 100%;
+            padding: 1.5rem 20%;
+            display: flex;
+            gap: 1.5rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @media (max-width: 1024px) {
+            .message-row { padding: 1.5rem 5%; }
+        }
+
+        .message-row.user-row {
+            background-color: var(--bg-msg-user);
+        }
+
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .avatar.prince { background-color: #3498db; color: white; }
+        .avatar.princess { background-color: #e91e63; color: white; }
+
+        .message-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .sender-name {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .message-text {
+            font-size: 1rem;
+            line-height: 1.6;
+            word-break: break-word;
+        }
+
+        .message-text a {
+            color: #58a6ff;
+            text-decoration: underline;
+        }
+
+        .timestamp {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            align-self: flex-end;
+            margin-top: 5px;
+        }
+
+        /* Input Area */
+        .input-area {
+            padding: 2rem 20%;
+            background: linear-gradient(transparent, var(--bg-chat) 20%);
+        }
+
+        @media (max-width: 1024px) {
+            .input-area { padding: 1rem 5%; }
+        }
+
+        .input-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding-right: 10px;
+        }
+
+        .input-container input {
+            border: none;
+            background: transparent;
+            margin-bottom: 0;
+            padding: 14px;
+            flex: 1;
+        }
+
+        .input-container button {
+            width: auto;
+            margin-bottom: 0;
+            padding: 8px 14px;
+            background: transparent;
+            color: var(--text-muted);
+        }
+
+        .input-container input:focus + button, 
+        .input-container button:hover {
+            color: var(--accent-color);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <div class="login-box">
+            <h2><i class="fa-solid fa-lock" style="color: var(--accent-color);"></i> Acceso al Chat</h2>
+            <div class="error-msg" id="login-error">Contraseña incorrecta. Inténtalo de nuevo.</div>
+            
+            <label style="display:block; text-align:left; margin-bottom:5px; color:var(--text-muted)">Selecciona tu Usuario:</label>
+            <select id="user-select">
+                <option value="Príncipe">Príncipe</option>
+                <option value="Princesa">Princesa</option>
+            </select>
+
+            <label style="display:block; text-align:left; margin-bottom:5px; color:var(--text-muted)">Contraseña:</label>
+            <input type="password" id="password-input" placeholder="Introduce la contraseña única...">
+            
+            <button onclick="tryLogin()">Entrar al Chat</button>
+        </div>
+    </div>
+
+    <div id="app-container">
+        <aside>
+            <div class="sidebar-top">
+                <h3>Canales</h3>
+                <div class="chat-list-item">
+                    <i class="fa-regular fa-comments"></i>
+                    <span>Chat Principal</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-bottom">
+                <button class="btn-danger" onclick="clearChat()">
+                    <i class="fa-solid fa-trash-can"></i> Vaciar Chat
+                </button>
+                <div class="user-info">
+                    <div id="current-avatar" class="avatar"></div>
+                    <div>
+                        <div id="current-username" style="font-weight: bold;"></div>
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">En línea</span>
+                    </div>
+                    <i class="fa-solid fa-sign-out-alt" style="margin-left: auto; cursor: pointer; color: var(--text-muted);" onclick="logout()" title="Cerrar Sesión"></i>
+                </div>
+            </div>
+        </aside>
+
+        <main>
+            <header>
+                <h2>Sala: Realeza Privada</h2>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">Cifrado de extremo a extremo (Local)</span>
+            </header>
+
+            <div id="chat-window">
+                </div>
+
+            <div class="input-area">
+                <div class="input-container">
+                    <input type="text" id="message-input" placeholder="Envía un mensaje seguro..." onkeypress="handleKeyPress(event)">
+                    <button onclick="sendMessage()"><i class="fa-solid fa-paper-plane fa-lg"></i></button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Configuración y variables globales
+        const PASS_REQ = "123456789!";
+        let currentUser = null;
+        let lastMessageCount = 0;
+
+        // --- FUNCIONES DE ENCRIPTACIÓN COMPORTAMENTALES ---
+        // Encripta: Invierte el texto y lo convierte a Base64
+        function encryptMessage(text) {
+            let reversed = text.split("").reverse().join("");
+            return btoa(unescape(encodeURIComponent(reversed)));
+        }
+
+        // Desencripta: Revierte el Base64 e invierte el texto de vuelta
+        function decryptMessage(cipher) {
+            try {
+                let decoded = decodeURIComponent(escape(atob(cipher)));
+                return decoded.split("").reverse().join("");
+            } catch(e) {
+                return "[Error al desencriptar mensaje]";
+            }
+        }
+
+        // --- AUTENTICACIÓN ---
+        function tryLogin() {
+            const selectedUser = document.getElementById('user-select').value;
+            const passInput = document.getElementById('password-input').value;
+            const errorDiv = document.getElementById('login-error');
+
+            if (passInput === PASS_REQ) {
+                currentUser = selectedUser;
+                errorDiv.style.display = 'none';
+                document.getElementById('login-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('login-screen').style.display = 'none';
+                }, 500);
+
+                // Configurar datos del usuario actual en el Sidebar
+                document.getElementById('current-username').innerText = currentUser;
+                const avatar = document.getElementById('current-avatar');
+                avatar.innerText = currentUser === "Príncipe" ? "PR" : "PZ";
+                avatar.className = `avatar ${currentUser === "Príncipe" ? "prince" : "princess"}`;
+
+                // Cargar mensajes e iniciar polling dinámico
+                loadMessages();
+                setInterval(loadMessages, 1000); // Revisa cambios cada 1 segundo
+            } else {
+                errorDiv.style.display = 'block';
+            }
+        }
+
+        function logout() {
+            location.reload(); // Recarga la aplicación para resetear estados
+        }
+
+        // --- SISTEMA DE MANEJO DE TEXTO / LINKS ---
+        function formatText(text) {
+            // Expresión regular para identificar URLs
+            const urlRegex = /(https?:\/\/[^\s]+)/g;
+            return text.replace(urlRegex, function(url) {
+                return `<a href="${url}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+            });
+        }
+
+        // --- CONTROLADORES DE MENSAJES EN LOCALSTORAGE ---
+        function getRawMessages() {
+            const db = localStorage.getItem('royal_chat_db');
+            return db ? JSON.parse(db) : [];
+        }
+
+        function loadMessages() {
+            const encryptedMessages = getRawMessages();
+            
+            // Optimización: Solo re-renderizar si la cantidad de mensajes cambió
+            if (encryptedMessages.length === lastMessageCount) return;
+            lastMessageCount = encryptedMessages.length;
+
+            const chatWindow = document.getElementById('chat-window');
+            chatWindow.innerHTML = ''; // Limpiar ventana
+
+            encryptedMessages.forEach(msg => {
+                const decryptedText = decryptMessage(msg.payload);
+                const formattedText = formatText(decryptedText);
+                
+                const isMe = msg.sender === currentUser;
+                const avatarClass = msg.sender === "Príncipe" ? "prince" : "princess";
+                const avatarInitials = msg.sender === "Príncipe" ? "PR" : "PZ";
+
+                const msgRow = document.createElement('div');
+                msgRow.className = `message-row ${isMe ? 'user-row' : ''}`;
+
+                msgRow.innerHTML = `
+                    <div class="avatar ${avatarClass}">${avatarInitials}</div>
+                    <div class="message-content">
+                        <div class="sender-name">${msg.sender}</div>
+                        <div class="message-text">${formattedText}</div>
+                        <div class="timestamp">${msg.time}</div>
+                    </div>
+                `;
+                chatWindow.appendChild(msgRow);
+            });
+
+            // Auto-scroll al último mensaje
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const encryptedPayload = encryptMessage(text);
+            const now = new Date();
+            const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const newMsg = {
+                sender: currentUser,
+                payload: encryptedPayload,
+                time: timeString
+            };
+
+            const allMessages = getRawMessages();
+            allMessages.push(newMsg);
+            localStorage.setItem('royal_chat_db', JSON.stringify(allMessages));
+
+            input.value = '';
+            loadMessages();
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        function clearChat() {
+            if (confirm("¿Estás seguro de que deseas vaciar todo el historial de chat de forma permanente?")) {
+                localStorage.removeItem('royal_chat_db');
+                lastMessageCount = 0;
+                loadMessages();
+            }
+        }
+    </script>
+</body>
+</html>
